@@ -1,0 +1,62 @@
+[
+  {
+    "n": 1,
+    "title": "Dasar Mobilitas & Movement Tech",
+    "body": "Flash Step: Tekan R ke arah cursor untuk teleportasi instan melewati stun atau serangan musuh.\nDash Canceling: Gunakan Dash (Q) lalu segera batalkan dengan lompat untuk mempercepat mobilitas di udara.\nSky Jump & Geppo: Mengatur ritme lompatan di udara agar tidak mudah ditebak atau dijatuhkan musuh.\nSoru Reset: Trik me-reset cooldown Flash Step dengan berganti senjata cepat (weapon switch).",
+    "code": "[Q] Dash -> [Space] Jump Cancel -> [R] Flash Step (Cursor on enemy)"
+  },
+  {
+    "n": 2,
+    "title": "Penguasaan Ken Haki (Instinct)",
+    "body": "Ken Activation: Aktifkan Instinct (E) untuk membaca posisi musuh dan menghindari serangan secara otomatis.\nKen Break: Pahami skill apa saja yang langsung memecahkan Ken lawan (serangan multi-hit & AOE besar).\nKen Trick: Matikan Ken saat musuh melancarkan multi-hit stun agar cadangan dodge tidak langsung terkuras.\nCooldown Management: Matikan Ken saat musuh sedang cooldown skill untuk menghemat charge cadangan.",
+    "code": "[E] Instinct Toggle -> Monitor Charge -> Turn OFF on multi-hit stun"
+  },
+  {
+    "n": 3,
+    "title": "Pemilihan Build & Distribusi Stat",
+    "body": "Fruit Main: Stat Max pada Melee, Defense, dan Blox Fruit. Cocok untuk spammer fruit dan burst damage.\nSword Main: Stat Max pada Melee, Defense, dan Sword. Sangat mematikan untuk one-shot combo senjata mythic.\nHybrid Build: Membagi poin antara Sword dan Fruit, memerlukan akurasi dan timing skill yang ketat.\nStat Stamina: Pastikan Melee selalu 2550 agar kamu memiliki energi cukup untuk dash dan geppo bertubi-tubi.",
+    "code": "Melee: 2550 | Defense: 2550 | Sword: 2550 (Sword Main Build)"
+  },
+  {
+    "n": 4,
+    "title": "Mekanik Stun & Break Combo",
+    "body": "Hard Stun vs Soft Stun: Hard stun membekukan musuh total tanpa bisa bergerak, soft stun memperlambat mobilitas.\nEscape Timing: Gunakan V4 Awakening atau Flash Step di celah milidetik sebelum skill lanjutan mendarat.\nHitbox Pacing: Pahami jangkauan efektif serangan; jangan gunakan skill saat musuh di luar jangkauan hitbox.\nCounter Stun: Membaca animasi awal lawan lalu membalas dengan skill ber-prioritas super armor.",
+    "code": "Wait Stun Gap -> [R] Flash Step Behind -> [Z/X/C] Counter Attack"
+  },
+  {
+    "n": 5,
+    "title": "Fighting Style Mastery",
+    "body": "Godhuman: Gaya bertarung paling dominan di PvP berkat mobilitas tinggi dan damage combo yang instan.\nElectric Claw: Sangat lincah dengan dash jarak jauh pada skill C dan stun cepat pada skill X.\nSanguine Art: Menguras darah musuh (lifesteal) dan memberikan stun area kuat di udara maupun darat.\nDragon Talon: Memiliki hitbox api luas dan skill knockup yang sangat mudah disambung ke sword.",
+    "code": "Godhuman [Z] Beast Owl Slash -> [C] Heavenly Shear -> [X] Sixth Realm Gun"
+  },
+  {
+    "n": 6,
+    "title": "Senjata Meta & Sword Play",
+    "body": "Cursed Dual Katana (CDK): Senjata wajib dengan damage critical tinggi dan kemampuan dash menembus musuh.\nSpikey Trident: Menarik musuh ke arah kita dengan skill X (Pull), menjadi starter combo paling mematikan.\nShark Anchor: Sangat kuat untuk menarik musuh dari udara ke tanah dan memberikan debuff slow.\nHallow Scythe: Menghempaskan musuh dan membuat mereka panik dengan skill tornado area.",
+    "code": "Spikey Trident [X] Pull -> CDK [Z] Revolving Hurr -> CDK [X] Slayer of Goliath"
+  },
+  {
+    "n": 7,
+    "title": "Buah Iblis Meta PvP (Devil Fruits)",
+    "body": "Ice Fruit: Buah starter terbaik dengan combo stun freeze mutlak yang tidak bisa di-dodge jika Ken pecah.\nPortal Fruit: Pengendali ruang terbaik; skill World Warp dan Dimensional Rift membuat lawan kehilangan target.\nDough Awakened: Rajanya combo stun tarik-menarik dengan V (Pastry River) dan C (Piercing Clothesline).\nKitsune: Buah tercepat dengan pasif movement speed gila, damage cakar ganas, dan api spiritual.",
+    "code": "Ice [V] Absolute Zero -> Ice [C] Glacial Surge -> Ice [Z] Ice Spear"
+  },
+  {
+    "n": 8,
+    "title": "Gun Combo & Combo Starter",
+    "body": "Soul Guitar: Gun terkuat di meta; skill Z memecahkan Ken Haki musuh dan skill X memberi stun musikal area.\nAcidum Rifle: Senjata penembak jitu dengan efek acid racun yang merusak darah lawan secara terus-menerus.\nKabucha: Memantulkan musuh dan memberikan knockback kuat dengan efek burn.\nStarter Pacing: Buka pertarungan dengan Soul Guitar Z untuk menghancurkan Ken lawan dari jarak aman.",
+    "code": "Soul Guitar [Z] El Diablo -> [X] Soul Beam -> Switch to Melee / Sword"
+  },
+  {
+    "n": 9,
+    "title": "One-Shot True Combo Execution",
+    "body": "Definisi True Combo: Rangkaian serangan beruntun di mana musuh tidak bisa menghindar atau kabur.\nPacing & Input Delay: Jangan menekan tombol terlalu terburu-buru; tunggu proyektil mendarat sebelum switch item.\nContoh One-Shot Build: Ice Awakened + Godhuman + CDK + Soul Guitar.\nEksekusi Lapangan: Pancing musuh mendekat, tangkap dengan stun es, lalu tuntaskan dengan rotasi 4 senjata.",
+    "code": "Ice V -> Soul Guitar Z -> Godhuman C -> Spikey Trident X -> Godhuman Z -> Godhuman X"
+  },
+  {
+    "n": 10,
+    "title": "Mentalitas & Taktik PvP Kompetitif",
+    "body": "Baiting & Pacing: Jangan terburu-buru mengeluarkan skill starter; pancing musuh menghabiskan dash mereka dulu.\nSafe Zone Awareness: Hindari bertarung di dekat safe zone musuh agar bounty tidak hangus saat mereka kabur.\nBounty Hunting Strategy: Selalu incar pemain dengan bounty 2.5M - 30M untuk mengasah reflek bertarung.\nSportivitas & Fair Play: No toxicity, pelajari rekaman kekalahan untuk menambal kelemahan rotasi skill kamu.",
+    "code": "Observe -> Bait Skill -> Ken Break -> Execute One-Shot Combo -> Claim Bounty"
+  }
+]

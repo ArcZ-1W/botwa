@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EndLess Academy - WhatsApp Bot Dashboard &amp; Webhook API</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="stylesheet" href="style.css?v=2.6">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Dedicated Login Page (Password Only: "x") -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo-wrap">
+                    <img src="/logo.png" alt="EndLess Academy Logo" class="login-logo">
+                </div>
+                <h2>EndLess Academy</h2>
+                <div class="login-badge">Dashboard Gateway</div>
+                <p>Masukkan kata sandi untuk mengakses kontrol bot &amp; log webhook</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="login-input-group">
+                    <span class="login-input-icon">🔐</span>
+                    <input type="password" id="loginPassword" placeholder="Masukkan password dashboard..." autofocus autocomplete="current-password" required>
+                    <button type="button" id="btnTogglePassword" class="btn-toggle-eye" title="Lihat / Sembunyikan Password">👁️</button>
+                </div>
+                <button type="submit" id="btnLoginSubmit" class="btn btn-primary btn-block">
+                    <span>Buka Dashboard</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+                <div id="loginError" class="login-error hidden">
+                    ⚠️ Password salah! Silakan coba lagi.
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Application Layout -->
+    <div class="app-layout hidden" id="appLayout">
+        <!-- Top Navigation Bar -->
+        <header class="top-nav">
+            <div class="brand">
+                <img src="/logo.png" alt="EndLess Academy Logo" class="brand-logo" id="headerLogo">
+                <div class="brand-text">
+                    <div class="brand-title-row">
+                        <h1 id="brandName">EndLess Academy</h1>
+                        <span class="tunnel-live-tag" title="Cloudflare Tunnel aktif">
+                            <span class="live-dot"></span> api.revicshop.web.id
+                        </span>
+                    </div>
+                    <span class="subtitle">WhatsApp Webhook Gateway &amp; Automated Assistant</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="header-status-group">
+                    <button id="btnHeaderMode" class="btn btn-sm btn-mode" title="Klik untuk beralih mode">
+                        🌐 Open Mode
+                    </button>
+                    <div class="status-pill" id="statusPill">
+                        <span class="status-dot"></span>
+                        <span id="statusLabel">Memeriksa...</span>
+                    </div>
+                </div>
+
+                <div class="control-buttons">
+                    <button id="btnStart" class="btn btn-action btn-success" title="Mulai Bot">
+                        <span class="icon">▶</span> Jalankan
+                    </button>
+                    <button id="btnStop" class="btn btn-action btn-danger" title="Hentikan Bot">
+                        <span class="icon">⏹</span> Hentikan
+                    </button>
+                    <button id="btnRestart" class="btn btn-action btn-secondary" title="Mulai Ulang Bot">
+                        <span class="icon">🔄</span> Restart
+                    </button>
+                    <button id="btnClearSession" class="btn btn-action btn-warning" title="Bersihkan Sesi untuk Pairing Ulang">
+                        <span class="icon">🗑️</span> Reset Sesi
+                    </button>
+                    <button id="btnLogout" class="btn btn-action btn-outline btn-lock" title="Kunci Dashboard (Logout)">
+                        <span class="icon">🔒</span> Kunci
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Services Control Bar (Server, Bot, Tunnel) -->
+            <section class="services-bar">
+                <div class="service-box">
+                    <div class="service-icon">🖥️</div>
+                    <div class="service-details">
+                        <span class="service-name">Web Dashboard Server</span>
+                        <span class="service-sub">Port 2979 (HTTP &amp; WebSocket)</span>
+                    </div>
+                    <span class="service-pill pill-online">🟢 Berjalan</span>
+                </div>
+
+                <div class="service-box">
+                    <div class="service-icon">🤖</div>
+                    <div class="service-details">
+                        <span class="service-name">Bot WhatsApp</span>
+                        <span class="service-sub" id="serviceSubBot">Memeriksa status...</span>
+                    </div>
+                    <div class="service-actions">
+                        <button id="btnQuickStartBot" class="btn btn-xs btn-success" title="Jalankan Bot WhatsApp">▶ Jalankan</button>
+                        <button id="btnQuickStopBot" class="btn btn-xs btn-danger" title="Hentikan Bot">⏹ Stop</button>
+                    </div>
+                </div>
+
+                <div class="service-box">
+                    <div class="service-icon">🌐</div>
+                    <div class="service-details">
+                        <span class="service-name">Cloudflare Tunnel</span>
+                        <span class="service-sub" id="serviceSubTunnel">api.revicshop.web.id</span>
+                    </div>
+                    <div class="service-actions">
+                        <button id="btnToggleTunnel" class="btn btn-xs btn-primary">Mulai Tunnel</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pairing Code Alert Box -->
+            <section class="pairing-banner hidden" id="pairingBanner">
+                <div class="pairing-content">
+                    <div class="pairing-header">
+                        <span class="badge-pairing">🔑 BUTUH TAUTAN</span>
+                        <h2>Kode Pairing WhatsApp Anda</h2>
+                        <p>Masukkan kode berikut di aplikasi WhatsApp: <strong>Pengaturan &gt; Perangkat Tertaut &gt; Tautkan dengan nomor telepon</strong></p>
+                    </div>
+                    <div class="pairing-code-display">
+                        <div class="code-box" id="displayPairingCode">MEMUAT...</div>
+                        <button class="btn btn-copy" id="btnCopyCode" title="Salin Kode">📋 Salin Kode</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Balanced 4-Card Metrics Grid -->
+            <div class="stats-grid">
+                <div class="card stat-card">
+                    <div class="stat-icon icon-status">📶</div>
+                    <div class="stat-body">
+                        <span class="stat-label">Status WhatsApp</span>
+                        <span class="stat-value" id="cardStatus">-</span>
+                    </div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="stat-icon icon-mode">🛡️</div>
+                    <div class="stat-body">
+                        <span class="stat-label">Mode Akses</span>
+                        <span class="stat-value" id="cardMode">🌐 Publik (Semua)</span>
+                    </div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="stat-icon icon-uptime">⏱️</div>
+                    <div class="stat-body">
+                        <span class="stat-label">Uptime Bot</span>
+                        <span class="stat-value" id="cardUptime">0d 0h 0m</span>
+                    </div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="stat-icon icon-commands">⚡</div>
+                    <div class="stat-body">
+                        <span class="stat-label">Total Pesan &amp; Webhook</span>
+                        <span class="stat-value" id="cardCommands">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Tabs -->
+            <div class="tab-container">
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-tab="tab-logs">
+                        <span class="tab-icon">📜</span> Log &amp; Terminal
+                    </button>
+                    <button class="tab-btn" data-tab="tab-webhook">
+                        <span class="tab-icon">⚡</span> Webhook Verification API
+                    </button>
+                    <button class="tab-btn" data-tab="tab-settings">
+                        <span class="tab-icon">⚙️</span> Pengaturan Bot
+                    </button>
+                    <button class="tab-btn" data-tab="tab-guide">
+                        <span class="tab-icon">📖</span> Panduan Perintah
+                    </button>
+                </div>
+
+                <!-- Tab 1: Terminal & Logs -->
+                <div class="tab-pane active" id="tab-logs">
+                    <div class="card terminal-card">
+                        <div class="terminal-header">
+                            <div class="terminal-dots">
+                                <span class="dot dot-red"></span>
+                                <span class="dot dot-yellow"></span>
+                                <span class="dot dot-green"></span>
+                                <span class="terminal-title">live-stream@endless-bot:~$</span>
+                            </div>
+                            <div class="terminal-controls">
+                                <span class="log-count-badge" id="logCounter">0 pesan</span>
+                                <select id="logFilter" class="select-sm">
+                                    <option value="all">Semua Log</option>
+                                    <option value="command">Perintah &amp; Webhook</option>
+                                    <option value="error">Error &amp; Peringatan</option>
+                                </select>
+                                <button id="btnClearLogs" class="btn btn-sm btn-outline">Bersihkan</button>
+                            </div>
+                        </div>
+                        <div class="terminal-body" id="terminalLogs">
+                            <div class="log-empty">Menunggu aktivitas bot &amp; webhook... Log aktivitas akan tampil di sini secara real-time.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Webhook Verification API Playground -->
+                <div class="tab-pane" id="tab-webhook">
+                    <div class="card webhook-card">
+                        <div class="webhook-header">
+                            <div class="webhook-header-text">
+                                <h3>⚡ Webhook Verification API (OTP / Notifikasi)</h3>
+                                <p>Gunakan endpoint REST API ini untuk mengirim kode OTP atau pesan verifikasi dari website/aplikasi Anda ke WhatsApp secara instan.</p>
+                            </div>
+                            <span class="badge-webhook-status">Anti-Spam 60s Delay</span>
+                        </div>
+
+                        <!-- Live Endpoint Display -->
+                        <div class="endpoint-box">
+                            <span class="method-badge">GET / POST</span>
+                            <code class="endpoint-url" id="endpointSample">https://api.revicshop.web.id/api/v1?number=1010&amp;code=123456</code>
+                            <button class="btn btn-sm btn-primary" id="btnCopyEndpoint">📋 Salin URL</button>
+                        </div>
+
+                        <!-- Webhook Playground Layout -->
+                        <div class="webhook-playground-grid">
+                            <div class="simulator-box">
+                                <h4>Kirim Tes Verifikasi</h4>
+                                <form id="webhookForm" class="sim-form">
+                                    <div class="form-group">
+                                        <label for="webTarget">Nomor WhatsApp Target</label>
+                                        <input type="text" id="webTarget" class="form-input" placeholder="Contoh: 089523042979 atau 62895..." value="6289523042979" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="webCode">Kode Verifikasi / OTP</label>
+                                        <input type="text" id="webCode" class="form-input" placeholder="Contoh: 849201" value="558822" required>
+                                    </div>
+
+                                    <div class="form-actions-row">
+                                        <button type="submit" class="btn btn-success btn-submit-webhook" id="btnTestWebhook">
+                                            🚀 Kirim Verifikasi Sekarang
+                                        </button>
+                                        <span id="cooldownBadge" class="cooldown-pill hidden">⏳ Cooldown 60s</span>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="simulator-response-box">
+                                <h4>Hasil Respon API</h4>
+                                <div id="webhookResultBox" class="result-box">
+                                    <div id="webhookResultText" class="result-text">
+                                        <span class="text-placeholder">Belum ada permintaan dikirim. Klik tombol kirim di samping untuk menguji webhook.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Bot Settings -->
+                <div class="tab-pane" id="tab-settings">
+                    <div class="card settings-card">
+                        <div class="settings-header">
+                            <h3>⚙️ Pengaturan Bot &amp; Sistem</h3>
+                            <p>Ubah konfigurasi bot, identitas stiker, domain, dan jeda delay webhook secara langsung.</p>
+                        </div>
+
+                        <form id="settingsForm" class="settings-form">
+                            <!-- Group 1: Bot Identity -->
+                            <div class="settings-section">
+                                <h4 class="settings-section-title">Identitas Bot</h4>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="inputBotName">Nama Bot</label>
+                                        <input type="text" id="inputBotName" class="form-input" placeholder="EndLess Academy Bot">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="inputPrefix">Prefix Perintah</label>
+                                        <input type="text" id="inputPrefix" class="form-input" placeholder=".">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="selectMode">Mode Akses Bot</label>
+                                        <select id="selectMode" class="form-input">
+                                            <option value="public">🌐 Public (Merespon Semua Orang)</option>
+                                            <option value="private">🔒 Private (Khusus Owner)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="inputBotNumber">Nomor Pemilik / Bot</label>
+                                        <input type="text" id="inputBotNumber" class="form-input" placeholder="6289523042979">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group 2: Watermark Stiker -->
+                            <div class="settings-section">
+                                <h4 class="settings-section-title">Watermark Stiker Otomatis</h4>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="inputPackname">Nama Paket (Packname)</label>
+                                        <input type="text" id="inputPackname" class="form-input" placeholder="EndLessAcademy">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="inputAuthor">Pembuat (Author Watermark)</label>
+                                        <input type="text" id="inputAuthor" class="form-input" placeholder="Minat? pm 6289523042979">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group 3: Tunnel & Webhook -->
+                            <div class="settings-section">
+                                <h4 class="settings-section-title">Domain &amp; Webhook Cooldown</h4>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="inputTunnelDomain">Custom Domain Tunnel</label>
+                                        <input type="text" id="inputTunnelDomain" class="form-input" placeholder="api.revicshop.web.id">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="inputDelaySec">Jeda Delay Webhook (Detik per Nomor)</label>
+                                        <input type="number" id="inputDelaySec" class="form-input" min="1" max="600" value="60">
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label for="inputTunnelToken">Cloudflare Tunnel Token (Auto-Start)</label>
+                                        <input type="password" id="inputTunnelToken" class="form-input" placeholder="Token Cloudflare Tunnel...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group 4: Auto-Start Services (Server, Bot, Tunnel) -->
+                            <div class="settings-section">
+                                <h4 class="settings-section-title">Pengaturan Auto-Start Services</h4>
+                                <div class="toggle-list">
+                                    <label class="toggle-card">
+                                        <input type="checkbox" id="checkAutoStartServer" checked disabled>
+                                        <div class="toggle-card-content">
+                                            <span class="toggle-title">🖥️ Auto-Start Web Server</span>
+                                            <span class="toggle-desc">Web Server lokal (Port 2979) otomatis aktif saat bot dijalankan (Selalu Aktif).</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="toggle-card">
+                                        <input type="checkbox" id="checkAutoStartBot" checked>
+                                        <div class="toggle-card-content">
+                                            <span class="toggle-title">🤖 Auto-Start WhatsApp Bot</span>
+                                            <span class="toggle-desc">Otomatis menghubungkan bot WhatsApp ke sesi saat aplikasi mulai.</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="toggle-card">
+                                        <input type="checkbox" id="checkAutoStartTunnel" checked>
+                                        <div class="toggle-card-content">
+                                            <span class="toggle-title">🌐 Auto-Start Cloudflare Tunnel</span>
+                                            <span class="toggle-desc">Otomatis menjalankan proses cloudflared (api.revicshop.web.id) sejak awal.</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="toggle-card">
+                                        <input type="checkbox" id="checkWindowsStartup">
+                                        <div class="toggle-card-content">
+                                            <span class="toggle-title">🚀 Jalankan Otomatis saat Windows Boot (Startup)</span>
+                                            <span class="toggle-desc">Mendaftarkan aplikasi ke Windows Startup agar bot berjalan otomatis di latar belakang saat PC dinyalakan.</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="settings-footer">
+                                <button type="submit" class="btn btn-primary btn-save">
+                                    💾 Simpan Semua Perubahan
+                                </button>
+                                <span id="saveStatus" class="save-status-text"></span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Command Guide with Live Search -->
+                <div class="tab-pane" id="tab-guide">
+                    <div class="card guide-card">
+                        <div class="guide-header-bar">
+                            <div class="guide-header-info">
+                                <h3>📖 Panduan Lengkap Perintah Bot</h3>
+                                <p>Daftar lengkap fitur cerdas yang siap digunakan langsung di WhatsApp.</p>
+                            </div>
+                            <div class="guide-search-wrap">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="guideSearchInput" placeholder="Cari perintah (misal: .tiktok, .nulis, .emoji)..." class="guide-search">
+                            </div>
+                        </div>
+
+                        <div class="guide-grid" id="guideGrid">
+                            <!-- Downloader -->
+                            <div class="guide-item" data-category="downloader">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">📥 Downloader</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.tiktok</span>
+                                        <span class="cmd-pill-alt">.tt</span>
+                                    </div>
+                                </div>
+                                <h4>TikTok Video &amp; Audio</h4>
+                                <p>Unduh video TikTok tanpa watermark dan audio jernih otomatis: <code>.tiktok &lt;link&gt;</code></p>
+                            </div>
+
+                            <div class="guide-item" data-category="downloader">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">📥 Downloader</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.spotify</span>
+                                        <span class="cmd-pill-alt">.spotdl</span>
+                                    </div>
+                                </div>
+                                <h4>Spotify Music Downloader</h4>
+                                <p>Unduh lagu MP3 dari Spotify lengkap dengan cover dan metadata: <code>.spotify &lt;link_lagu&gt;</code></p>
+                            </div>
+
+                            <div class="guide-item" data-category="downloader">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">📥 Downloader</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.fb</span>
+                                        <span class="cmd-pill-alt">.ig</span>
+                                        <span class="cmd-pill-alt">.mediafire</span>
+                                    </div>
+                                </div>
+                                <h4>Facebook, Instagram &amp; MediaFire</h4>
+                                <p>Unduh video Facebook HD (<code>.fb &lt;link&gt;</code>), Reels Instagram (<code>.ig &lt;link&gt;</code>), dan berkas MediaFire (<code>.mediafire &lt;link&gt;</code>).</p>
+                            </div>
+
+                            <div class="guide-item" data-category="downloader">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">📥 Downloader</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.ytmp3</span>
+                                        <span class="cmd-pill-alt">.ytmp4</span>
+                                    </div>
+                                </div>
+                                <h4>YouTube MP3 &amp; MP4</h4>
+                                <p>Unduh musik audio (<code>.ytmp3 &lt;link&gt;</code>) atau video kualitas terbaik (<code>.ytmp4 &lt;link&gt;</code>).</p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🛠️ Tools</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.qr</span>
+                                        <span class="cmd-pill-alt">.qrcode</span>
+                                    </div>
+                                </div>
+                                <h4>QR Code Generator HD</h4>
+                                <p>Ubah tautan situs web atau teks menjadi gambar QR Code tajam: <code>.qr https://google.com</code> atau <code>.qr &lt;teks&gt;</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🛠️ Tools</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.shorturl</span>
+                                        <span class="cmd-pill-alt">.short</span>
+                                    </div>
+                                </div>
+                                <h4>Pemendek Tautan</h4>
+                                <p>Perpendek tautan panjang menjadi link ringkas: <code>.shorturl &lt;url&gt;</code></p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🛠️ Tools</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.tempfile</span>
+                                        <span class="cmd-pill-alt">.upload</span>
+                                    </div>
+                                </div>
+                                <h4>Cloud File Sharing</h4>
+                                <p>Balas file/gambar/video dengan <code>.tempfile</code> untuk membuat tautan unduhan langsung gratis.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🛠️ Tools</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.tempmail</span>
+                                        <span class="cmd-pill-alt">.checkmail</span>
+                                    </div>
+                                </div>
+                                <h4>Email Sementara &amp; Cek OTP</h4>
+                                <p><code>.tempmail</code> (buat inbox), <code>.checkmail</code> (baca pesan OTP), <code>.changemail &lt;nama&gt;</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🛠️ Tools</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.pinterest</span>
+                                        <span class="cmd-pill-alt">.pin</span>
+                                    </div>
+                                </div>
+                                <h4>Pencarian Gambar Pinterest (Carousel)</h4>
+                                <p>Cari foto estetik berkualitas HD dikirim via WhatsApp Carousel interaktif: <code>.pin wallpaper cyberpunk</code></p>
+                            </div>
+
+                            <!-- Maker -->
+                            <div class="guide-item" data-category="maker">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🎨 Maker</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.stiker</span>
+                                        <span class="cmd-pill-alt">.s</span>
+                                    </div>
+                                </div>
+                                <h4>Pembuat Stiker Otomatis</h4>
+                                <p>Kirim/balas foto atau video dengan <code>.stiker</code>. Dilengkapi watermark khusus.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="maker">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🎨 Maker</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.hd</span>
+                                        <span class="cmd-pill-alt">.remini</span>
+                                    </div>
+                                </div>
+                                <h4>Penjernih Foto HD</h4>
+                                <p>Kirim/balas foto dengan <code>.hd</code> untuk mempertajam resolusi gambar berburam.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="maker">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🎨 Maker</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.nulis</span>
+                                    </div>
+                                </div>
+                                <h4>Tulisan Tangan Kertas Buku</h4>
+                                <p>Ketik <code>.nulis &lt;teks&gt;</code> atau balas teks untuk mengubahnya menjadi foto lembar buku tulis asli.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="maker">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🎨 Maker</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.emoji</span>
+                                        <span class="cmd-pill-alt">.emojimix</span>
+                                    </div>
+                                </div>
+                                <h4>Stiker Emoji &amp; Emoji Kitchen</h4>
+                                <p><code>.emoji 😀🔥😍</code> (gabung s/d 20 emoji) atau <code>.emojimix 😎 🚀</code> (campur dua emoji menjadi hybrid stiker).</p>
+                            </div>
+
+                            <!-- Grup & Admin -->
+                            <div class="guide-item" data-category="group">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">👥 Grup &amp; Admin</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.grup buka</span>
+                                        <span class="cmd-pill-alt">.grup tutup</span>
+                                    </div>
+                                </div>
+                                <h4>Buka &amp; Tutup Grup Instan</h4>
+                                <p><code>.grup buka</code> / <code>.open</code> (buka chat semua peserta) dan <code>.grup tutup</code> / <code>.close</code> (kunci pesan khusus admin).</p>
+                            </div>
+
+                            <div class="guide-item" data-category="group">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">👥 Grup &amp; Admin</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.jadwalgrup</span>
+                                    </div>
+                                </div>
+                                <h4>Jadwal Buka/Tutup Grup Otomatis</h4>
+                                <p><code>.jadwalgrup tutup 22:00</code> dan <code>.jadwalgrup buka 06:00</code>. Lihat daftar dengan <code>.jadwalgrup daftar</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="group">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">👥 Grup &amp; Admin</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.only</span>
+                                        <span class="cmd-pill-alt">.whitelist</span>
+                                    </div>
+                                </div>
+                                <h4>Whitelist Chat Khusus (.only)</h4>
+                                <p>Batasi bot hanya membaca chat terdaftar: <code>.only add</code> (tambahkan chat ini), <code>.only del</code>, <code>.only list</code>, <code>.only on/off</code>.</p>
+                            </div>
+
+                            <!-- AI & Rangkum -->
+                            <div class="guide-item" data-category="ai">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🤖 EndLess AI</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.ai</span>
+                                        <span class="cmd-pill">.endlessai</span>
+                                    </div>
+                                </div>
+                                <h4>Asisten Cerdas EndLess AI</h4>
+                                <p>Tanyakan apa saja kepada AI pintar: <code>.ai jelaskan teori relativitas</code> atau <code>.ai bantu buatkan rencana belajar</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="ai">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🎨 AI Image Generator</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.imageai</span>
+                                        <span class="cmd-pill">.imgai</span>
+                                        <span class="cmd-pill">.txt2img</span>
+                                    </div>
+                                </div>
+                                <h4>Generate Gambar AI (Text &amp; Image-to-Image)</h4>
+                                <p>Buat gambar dengan prompt teks: <code>.imageai cute cat anime style</code> atau balas foto dengan <code>.imageai ubah gaya cyberpunk --style anime</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="ai">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">📄 Ringkasan Dokumen</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.rangkum</span>
+                                    </div>
+                                </div>
+                                <h4>Rangkum Teks, Dokumen TXT &amp; PDF</h4>
+                                <p>Balas pesan panjang atau dokumen PDF/TXT dengan <code>.rangkum 5</code> (menghasilkan ringkasan 5 kalimat penting).</p>
+                            </div>
+
+                            <!-- Pencarian & Informasi Prexzy -->
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🔍 Pencarian &amp; Info</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.cuaca</span>
+                                        <span class="cmd-pill-alt">.lirik</span>
+                                        <span class="cmd-pill-alt">.yts</span>
+                                        <span class="cmd-pill-alt">.imdb</span>
+                                    </div>
+                                </div>
+                                <h4>Cuaca, Lirik Lagu, YouTube &amp; Film</h4>
+                                <p><code>.cuaca Jakarta</code> (info cuaca live), <code>.lirik Adele</code> (lirik lagu lengkap), <code>.yts lofi</code> (cari YouTube), atau <code>.imdb Inception</code> (rating &amp; sinopsis film).</p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">👤 Stalking Profil</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.igstalk</span>
+                                        <span class="cmd-pill-alt">.ytstalk</span>
+                                        <span class="cmd-pill-alt">.ffstalk</span>
+                                    </div>
+                                </div>
+                                <h4>Stalk Akun IG, YouTube &amp; Free Fire</h4>
+                                <p><code>.igstalk cristiano</code> (cek profil IG), <code>.ytstalk @MrBeast</code> (statistik channel YouTube), atau <code>.ffstalk &lt;id&gt;</code> (profil game Free Fire).</p>
+                            </div>
+
+                            <div class="guide-item" data-category="maker">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">✨ 3D Text Maker</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.textpro</span>
+                                        <span class="cmd-pill-alt">.blackpink</span>
+                                        <span class="cmd-pill-alt">.neon</span>
+                                        <span class="cmd-pill-alt">.gold</span>
+                                    </div>
+                                </div>
+                                <h4>Pembuat Logo 3D &amp; Efek Teks</h4>
+                                <p><code>.blackpink EndLess</code>, <code>.neon Cyberpunk</code>, <code>.gold Luxury</code>, <code>.glitch Hacker</code>, atau <code>.textpro sand Pantai</code> (29 variasi efek).</p>
+                            </div>
+
+                            <div class="guide-item" data-category="maker">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🎲 Random Images</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.kucing</span>
+                                        <span class="cmd-pill-alt">.anjing</span>
+                                        <span class="cmd-pill-alt">.mobil</span>
+                                        <span class="cmd-pill-alt">.cewe</span>
+                                    </div>
+                                </div>
+                                <h4>Gambar Acak Kualitas HD</h4>
+                                <p><code>.kucing</code>, <code>.anjing</code>, <code>.mobil</code>, <code>.bluearchive</code>, <code>.ppcouple</code>, atau <code>.cewe indo / japan / hijab</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">💻 Developer &amp; Utilitas</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.compile</span>
+                                        <span class="cmd-pill-alt">.geoip</span>
+                                        <span class="cmd-pill-alt">.ssweb</span>
+                                        <span class="cmd-pill-alt">.styletext</span>
+                                    </div>
+                                </div>
+                                <h4>Compiler Online, GeoIP, WebSS &amp; Font</h4>
+                                <p><code>.compile python print("Halo")</code>, <code>.geoip 8.8.8.8</code>, <code>.ssweb https://google.com</code>, <code>.styletext &lt;teks&gt;</code>, <code>.tr &lt;teks&gt;</code>, <code>.bola</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="tools">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🗣️ Text To Speech</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.tts</span>
+                                        <span class="cmd-pill-alt">.vn</span>
+                                    </div>
+                                </div>
+                                <h4>Text To Speech Suara Audio VN</h4>
+                                <p>Ubah teks menjadi pesan suara VN WhatsApp: <code>.tts halo selamat pagi</code> atau <code>.tts whisper teks rahasia</code>.</p>
+                            </div>
+
+                            <!-- Alkitab & Renungan -->
+                            <div class="guide-item" data-category="rohani">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">📖 Alkitab Digital TB</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.alkitab</span>
+                                        <span class="cmd-pill">.bible</span>
+                                    </div>
+                                </div>
+                                <h4>Pencarian Kitab, Bab &amp; Ayat Alkitab (TB)</h4>
+                                <p><code>.alkitab lukas</code> (lihat daftar 24 bab), <code>.alkitab lukas 1</code> (baca bab 1), <code>.alkitab lukas 1:37</code> (baca ayat spesifik), atau <code>.alkitab cari kasih setia</code>.</p>
+                            </div>
+
+                            <div class="guide-item" data-category="rohani">
+                                <div class="guide-item-top">
+                                    <span class="category-badge">🕊️ Renungan Harian &amp; AI</span>
+                                    <div class="guide-pills">
+                                        <span class="cmd-pill">.renungan</span>
+                                        <span class="cmd-pill">.saatteduh</span>
+                                    </div>
+                                </div>
+                                <h4>Renungan Harian Resmi &amp; Renungan Rohani AI</h4>
+                                <p><code>.renungan</code> (Renungan Harian resmi hari ini), <code>.renungan santapan</code> (Santapan Harian), atau <code>.renungan kecemasan</code> (renungan rohani mendalam dari AI).</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js?v=2.6"></script>
+</body>
+</html>

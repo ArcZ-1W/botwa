@@ -1,0 +1,31 @@
+{
+  "name": "!bot-wa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "cli": "node index.js",
+    "clean": "node -e \"const fs = require('fs'); fs.rmSync('./session', { recursive: true, force: true }); console.log('Folder session berhasil dibersihkan.');\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@distube/ytdl-core": "^5.2.1",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "axios": "^1.21.0",
+    "express": "^5.3.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "form-data": "^4.0.6",
+    "node-webpmux": "^3.2.1",
+    "pdf-parse": "^2.4.5",
+    "pino": "^10.4.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.5",
+    "ws": "^8.22.1"
+  }
+}

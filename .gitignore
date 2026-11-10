@@ -1,0 +1,33 @@
+# Node dependencies
+node_modules/
+
+# WhatsApp Credentials & Session (Private)
+session/
+*.session
+
+# User Data & Uploads
+data/uploads/
+data/sessions.json
+data/users.json
+data/only_chats.json
+data/only_whitelist.json
+data/group_schedules.json
+data/chats.json
+
+# Temporary files
+temp/
+*.log
+
+# Archives
+*.zip
+*.tar.gz
+
+# Python cache & build
+__pycache__/
+build/
+dist/
+*.spec
+
+# OS generated files
+.DS_Store
+Thumbs.db
