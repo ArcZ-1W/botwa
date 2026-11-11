@@ -23,6 +23,7 @@ const groupScheduler = require('./lib/groupScheduler');
 const onlyManager = require('./lib/onlyManager');
 const ChatManager = require('./lib/chatManager');
 const comboManager = require('./lib/comboManager');
+const { AIRich, sendPinterestAIRich } = require('./lib/aiRich');
 const { info, warn, error } = require('./lib/color');
 
 /**
@@ -239,7 +240,7 @@ module.exports = async function messageHandler(sock, m) {
 ┃ 🔸 *${config.prefix}ytmp3* <url> : Unduh audio YouTube MP3
 ┃ 🔸 *${config.prefix}ytmp4* <url> : Unduh video YouTube MP4
 ┃ 🔸 *${config.prefix}mediafire* <url> : Unduh berkas MediaFire
-┃ 🔸 *${config.prefix}pinterest* <kueri> : Cari foto Pinterest (Carousel)
+┃ 🔸 *${config.prefix}pinterest* <kueri> : Cari foto Pinterest (AIRich HTML Response)
 ┃
 ┃ 🔍 *PENCARIAN & INFORMASI*
 ┃ 🔸 *${config.prefix}cuaca* <kota> : Info perkiraan cuaca kota
@@ -927,9 +928,10 @@ module.exports = async function messageHandler(sock, m) {
                 break;
             }
 
-            // ==================== PINTEREST CAROUSEL ====================
+            // ==================== PINTEREST AIRICH HTML ====================
             case 'pinterest':
-            case 'pin': {
+            case 'pin':
+            case 'pinairich': {
                 const query = args.join(' ');
                 if (!query) {
                     return await reply(`⚠️ Masukkan kata kunci pencarian Pinterest!\nContoh: *${config.prefix}pin anime aesthetic*`);
@@ -943,89 +945,101 @@ module.exports = async function messageHandler(sock, m) {
                         return await reply(`❌ Gambar Pinterest untuk kata kunci *"${query}"* tidak ditemukan.`);
                     }
 
-                    // Ambil hingga 6 gambar untuk kartu Carousel
-                    const carouselImages = results.slice(0, 6);
-                    const cards = [];
+                    // Kirim menggunakan WhatsApp Meta AI AIRich Response HTML
+                    try {
+                        await sendPinterestAIRich(sock, from, {
+                            query,
+                            results,
+                            quoted: m,
+                            botName: config.botName
+                        });
+                        await sock.sendMessage(from, { react: { text: '✅', key: m.key } });
+                    } catch (airichErr) {
+                        console.warn('[Pinterest] AIRich send failed, using carousel fallback:', airichErr.message);
 
-                    for (let i = 0; i < carouselImages.length; i++) {
-                        const imgUrl = carouselImages[i];
-                        try {
-                            const media = await prepareWAMessageMedia(
-                                { image: { url: imgUrl } },
-                                { upload: sock.waUploadToServer }
-                            );
+                        // Fallback ke Carousel jika perangkat / server tidak mendukung AIRich
+                        const carouselImages = results.slice(0, 6);
+                        const cards = [];
 
-                            cards.push({
-                                body: proto.Message.InteractiveMessage.Body.fromObject({
-                                    text: `📸 *Foto ${i + 1}* dari ${carouselImages.length}\n🔍 Kueri: *${query}*`
-                                }),
-                                footer: proto.Message.InteractiveMessage.Footer.fromObject({
-                                    text: `📌 Pinterest • ${config.botName}`
-                                }),
-                                header: proto.Message.InteractiveMessage.Header.fromObject({
-                                    title: `📌 Pinterest #${i + 1}`,
-                                    hasMediaAttachment: true,
-                                    imageMessage: media.imageMessage
-                                }),
-                                nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
-                                    buttons: [
-                                        {
-                                            name: 'cta_url',
-                                            buttonParamsJson: JSON.stringify({
-                                                display_text: '🔍 Buka Full HD',
-                                                url: imgUrl,
-                                                merchant_url: imgUrl
-                                            })
-                                        }
-                                    ]
-                                })
-                            });
-                        } catch (cardErr) {
-                            console.warn(`Gagal memuat media carousel ke-${i + 1}:`, cardErr.message);
-                        }
-                    }
+                        for (let i = 0; i < carouselImages.length; i++) {
+                            const imgUrl = carouselImages[i];
+                            try {
+                                const media = await prepareWAMessageMedia(
+                                    { image: { url: imgUrl } },
+                                    { upload: sock.waUploadToServer }
+                                );
 
-                    if (cards.length > 0) {
-                        const carouselContent = {
-                            viewOnceMessage: {
-                                message: {
-                                    messageContextInfo: {
-                                        deviceListMetadata: {},
-                                        deviceListMetadataVersion: 2
-                                    },
-                                    interactiveMessage: proto.Message.InteractiveMessage.fromObject({
-                                        body: proto.Message.InteractiveMessage.Body.fromObject({
-                                            text: `📌 *PINTEREST CAROUSEL*\n\n` +
-                                                  `🔍 *Kueri:* ${query}\n` +
-                                                  `📸 *Total Ditemukan:* ${results.length} foto HD\n\n` +
-                                                  `👉 *Geser ke samping (swipe) untuk melihat foto lainnya.*`
-                                        }),
-                                        footer: proto.Message.InteractiveMessage.Footer.fromObject({
-                                            text: config.botName
-                                        }),
-                                        header: proto.Message.InteractiveMessage.Header.fromObject({
-                                            hasMediaAttachment: false
-                                        }),
-                                        carouselMessage: proto.Message.InteractiveMessage.CarouselMessage.fromObject({
-                                            cards: cards,
-                                            messageVersion: 1
-                                        })
+                                cards.push({
+                                    body: proto.Message.InteractiveMessage.Body.fromObject({
+                                        text: `📸 *Foto ${i + 1}* dari ${carouselImages.length}\n🔍 Kueri: *${query}*`
+                                    }),
+                                    footer: proto.Message.InteractiveMessage.Footer.fromObject({
+                                        text: `📌 Pinterest • ${config.botName}`
+                                    }),
+                                    header: proto.Message.InteractiveMessage.Header.fromObject({
+                                        title: `📌 Pinterest #${i + 1}`,
+                                        hasMediaAttachment: true,
+                                        imageMessage: media.imageMessage
+                                    }),
+                                    nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
+                                        buttons: [
+                                            {
+                                                name: 'cta_url',
+                                                buttonParamsJson: JSON.stringify({
+                                                    display_text: '🔍 Buka Full HD',
+                                                    url: imgUrl,
+                                                    merchant_url: imgUrl
+                                                })
+                                            }
+                                        ]
                                     })
-                                }
+                                });
+                            } catch (cardErr) {
+                                console.warn(`Gagal memuat media carousel ke-${i + 1}:`, cardErr.message);
                             }
-                        };
+                        }
 
-                        const waMsg = generateWAMessageFromContent(from, carouselContent, { quoted: m });
-                        await sock.relayMessage(from, waMsg.message, { messageId: waMsg.key.id });
-                    } else {
-                        // Fallback jika semua kartu gagal upload
-                        await sock.sendMessage(from, {
-                            image: { url: results[0] },
-                            caption: `📌 *PINTEREST RESULTS*\n\n🔍 *Kueri:* ${query}\n📸 Ditemukan ${results.length} foto HD.`
-                        }, { quoted: m });
+                        if (cards.length > 0) {
+                            const carouselContent = {
+                                viewOnceMessage: {
+                                    message: {
+                                        messageContextInfo: {
+                                            deviceListMetadata: {},
+                                            deviceListMetadataVersion: 2
+                                        },
+                                        interactiveMessage: proto.Message.InteractiveMessage.fromObject({
+                                            body: proto.Message.InteractiveMessage.Body.fromObject({
+                                                text: `📌 *PINTEREST CAROUSEL*\n\n` +
+                                                      `🔍 *Kueri:* ${query}\n` +
+                                                      `📸 *Total Ditemukan:* ${results.length} foto HD\n\n` +
+                                                      `👉 *Geser ke samping (swipe) untuk melihat foto lainnya.*`
+                                            }),
+                                            footer: proto.Message.InteractiveMessage.Footer.fromObject({
+                                                text: config.botName
+                                            }),
+                                            header: proto.Message.InteractiveMessage.Header.fromObject({
+                                                hasMediaAttachment: false
+                                            }),
+                                            carouselMessage: proto.Message.InteractiveMessage.CarouselMessage.fromObject({
+                                                cards: cards,
+                                                messageVersion: 1
+                                            })
+                                        })
+                                    }
+                                }
+                            };
+
+                            const waMsg = generateWAMessageFromContent(from, carouselContent, { quoted: m });
+                            await sock.relayMessage(from, waMsg.message, { messageId: waMsg.key.id });
+                        } else {
+                            await sock.sendMessage(from, {
+                                image: { url: results[0] },
+                                caption: `📌 *PINTEREST RESULTS*\n\n🔍 *Kueri:* ${query}\n📸 Ditemukan ${results.length} foto HD.`
+                            }, { quoted: m });
+                        }
+
+                        await sock.sendMessage(from, { react: { text: '✅', key: m.key } });
                     }
-
-                    await sock.sendMessage(from, { react: { text: '✅', key: m.key } });
                 } catch (err) {
                     await sock.sendMessage(from, { react: { text: '❌', key: m.key } });
                     await reply(`❌ Gagal mencari di Pinterest: ${err.message}`);

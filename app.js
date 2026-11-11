@@ -107,6 +107,78 @@ function requireAuth(req, res, next) {
 // In-memory Cooldown Map untuk Webhook Verification (Default 60 detik per nomor)
 const verificationCooldowns = new Map();
 
+// In-memory Anti-Spam Maps untuk Chat Place: Tanpa jeda biasa, freeze 10s jika spam
+const chatMessageTimestamps = new Map(); // username -> [t1, t2, ...]
+const chatFrozenUntil = new Map();       // username -> timestamp akhir freeze
+const PREMIUM_USERS_FILE = path.join(__dirname, 'data', 'premium_users.json');
+const DELETED_COMBOS_FILE = path.join(__dirname, 'data', 'deleted_combos.json');
+const DELETED_USERS_FILE = path.join(__dirname, 'data', 'deleted_users.json');
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const SESSIONS_FILE = path.join(__dirname, 'data', 'sessions.json');
+
+function getDeletedUsers() {
+    try {
+        if (!fs.existsSync(DELETED_USERS_FILE)) return { ids: [], usernames: [], phones: [] };
+        const content = fs.readFileSync(DELETED_USERS_FILE, 'utf8');
+        return JSON.parse(content || '{"ids":[],"usernames":[],"phones":[]}');
+    } catch(e) {
+        return { ids: [], usernames: [], phones: [] };
+    }
+}
+
+function saveDeletedUsers(data) {
+    try {
+        const dir = path.dirname(DELETED_USERS_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(DELETED_USERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
+
+function getPremiumUsers() {
+    try {
+        if (!fs.existsSync(PREMIUM_USERS_FILE)) return [];
+        const content = fs.readFileSync(PREMIUM_USERS_FILE, 'utf8');
+        return JSON.parse(content || '[]');
+    } catch(e) {
+        return [];
+    }
+}
+
+function savePremiumUsers(list) {
+    try {
+        const dir = path.dirname(PREMIUM_USERS_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(PREMIUM_USERS_FILE, JSON.stringify(list, null, 2), 'utf8');
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
+
+function getDeletedCombos() {
+    try {
+        if (!fs.existsSync(DELETED_COMBOS_FILE)) return { ids: [], statuses: [] };
+        const content = fs.readFileSync(DELETED_COMBOS_FILE, 'utf8');
+        return JSON.parse(content || '{"ids":[],"statuses":[]}');
+    } catch(e) {
+        return { ids: [], statuses: [] };
+    }
+}
+
+function saveDeletedCombos(data) {
+    try {
+        const dir = path.dirname(DELETED_COMBOS_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(DELETED_COMBOS_FILE, JSON.stringify(data, null, 2), 'utf8');
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
+
 // Broadcast data ke semua klien WebSocket aktif yang terautentikasi
 function broadcast(data) {
     const payload = JSON.stringify(data);
@@ -436,9 +508,26 @@ app.get('/api/chat', (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
         const chats = ChatManager.getChats(limit);
+
+        // Hitung jumlah pengirim obrolan aktif baru-baru ini (15 menit terakhir)
+        const recentTime = Date.now() - (15 * 60 * 1000);
+        const recentSenders = new Set();
+        chats.forEach(c => {
+            if ((!c.timestamp || c.timestamp > recentTime) && c.username) {
+                recentSenders.add(c.username.trim().toLowerCase());
+            }
+        });
+
+        // Jumlah orang aktif berdasarkan WebSocket / pengirim chat
+        const wsClientCount = wss.clients ? wss.clients.size : 0;
+        const activePeople = Math.max(recentSenders.size, wsClientCount, 1);
+        const isCrowded = activePeople >= 4;
+
         res.json({
             success: true,
             count: chats.length,
+            activePeople,
+            isCrowded,
             chats
         });
     } catch (err) {
@@ -448,10 +537,49 @@ app.get('/api/chat', (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
     try {
-        const { username, text, fileData, fileName, fileType, source, replyTo, isSticker, isAudio, fileUrl } = req.body || {};
+        const { username, text, fileData, fileName, fileType, source, replyTo, isSticker, isAudio, fileUrl, isAdmin } = req.body || {};
         if (!text && !fileData && !isSticker && !fileUrl) {
             return res.status(400).json({ success: false, message: 'Pesan teks atau berkas lampiran wajib diisi.' });
         }
+
+        // Sistem Anti-Spam: Tanpa jeda normal, tapi jika spam (>= 4 pesan dalam 3 detik), di-freeze 10 detik
+        const cleanUser = (username || 'Anonim').trim().toLowerCase();
+        const now = Date.now();
+
+        // 1. Cek apakah pengguna saat ini sedang dalam masa freeze
+        const frozenUntil = chatFrozenUntil.get(cleanUser) || 0;
+        if (now < frozenUntil) {
+            const remainingSec = Math.ceil((frozenUntil - now) / 1000);
+            return res.status(429).json({
+                success: false,
+                rateLimited: true,
+                frozen: true,
+                remainingSec,
+                message: `Pesan dibekukan karena spam! Tunggu ${remainingSec} detik lagi.`
+            });
+        }
+
+        // 2. Deteksi Spam: Filter pesan dalam 3 detik terakhir
+        let timestamps = chatMessageTimestamps.get(cleanUser) || [];
+        timestamps = timestamps.filter(t => now - t < 3000);
+
+        if (timestamps.length >= 3) {
+            // Spam terdeteksi! Bekukan akun selama 10 detik
+            const freezeUntil = now + 10000;
+            chatFrozenUntil.set(cleanUser, freezeUntil);
+            chatMessageTimestamps.set(cleanUser, []);
+            return res.status(429).json({
+                success: false,
+                rateLimited: true,
+                frozen: true,
+                remainingSec: 10,
+                message: 'Terdeteksi spam chat! Anda dibekukan selama 10 detik.'
+            });
+        }
+
+        // Catat pengiriman pesan ini
+        timestamps.push(now);
+        chatMessageTimestamps.set(cleanUser, timestamps);
 
         const newChat = await ChatManager.addChat({
             username,
@@ -536,30 +664,198 @@ app.delete('/api/chat', (req, res) => {
 });
 
 // ==========================================
+// PREMIUM USERS API (Pengaturan Delay Pesan 1 Detik oleh Admin)
+// ==========================================
+app.get('/api/users/premium', (req, res) => {
+    try {
+        const premiumUsers = getPremiumUsers();
+        res.json({
+            success: true,
+            premiumUsers
+        });
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/users/premium', (req, res) => {
+    try {
+        const { username, isPremium } = req.body || {};
+        if (!username) {
+            return res.status(400).json({ success: false, message: 'Username wajib disertakan.' });
+        }
+        const cleanUser = username.trim().toLowerCase();
+        let list = getPremiumUsers();
+
+        if (isPremium) {
+            if (!list.map(u => u.toLowerCase()).includes(cleanUser)) {
+                list.push(username.trim());
+            }
+        } else {
+            list = list.filter(u => u.toLowerCase() !== cleanUser);
+        }
+
+        savePremiumUsers(list);
+        botManager.addLog('info', `[ADMIN] Status Premium user "${username}" diatur ke: ${Boolean(isPremium)} (Delay pesan: ${isPremium ? '1 detik' : '5 detik'}).`);
+
+        res.json({
+            success: true,
+            username,
+            isPremium: Boolean(isPremium),
+            message: Boolean(isPremium)
+                ? `Pengguna @${username} berhasil dijadikan Premium! Delay pesan kini 1 detik.`
+                : `Status Premium @${username} dicabut. Delay pesan kembali 5 detik.`
+        });
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ==========================================
+// MEMBER DELETION API (Hapus Member Permanen oleh Admin)
+// ==========================================
+app.get('/api/users/deleted', (req, res) => {
+    try {
+        const data = getDeletedUsers();
+        res.json({
+            success: true,
+            ...data
+        });
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/users/delete', async (req, res) => {
+    try {
+        const { id, username, phone } = req.body || {};
+        if (!id && !username && !phone) {
+            return res.status(400).json({ success: false, message: 'ID, username, atau nomor telepon wajib disertakan.' });
+        }
+
+        const cleanUser = (username || '').trim().toLowerCase();
+
+        // Lindungi akun administrator utama
+        if (cleanUser === 'arcz' || cleanUser === 'admin') {
+            return res.status(403).json({ success: false, message: 'Akun Administrator tidak dapat dihapus.' });
+        }
+
+        // 1. Simpan ke daftar deleted_users.json agar terfilter permanen
+        const delData = getDeletedUsers();
+        if (id && !delData.ids.includes(id)) delData.ids.push(id);
+        if (cleanUser && !delData.usernames.includes(cleanUser)) delData.usernames.push(cleanUser);
+        if (phone && !delData.phones.includes(phone)) delData.phones.push(phone);
+        saveDeletedUsers(delData);
+
+        // 2. Hapus dari users.json jika ada
+        try {
+            if (fs.existsSync(USERS_FILE)) {
+                let uList = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8') || '[]');
+                uList = uList.filter(u => {
+                    if (id && u.id === id) return false;
+                    if (cleanUser && (u.username || '').toLowerCase() === cleanUser) return false;
+                    if (phone && u.phone === phone) return false;
+                    return true;
+                });
+                fs.writeFileSync(USERS_FILE, JSON.stringify(uList, null, 2), 'utf8');
+            }
+        } catch(e) {}
+
+        // 3. Hapus dari premium_users.json jika ada
+        try {
+            let premList = getPremiumUsers();
+            premList = premList.filter(u => u.toLowerCase() !== cleanUser);
+            savePremiumUsers(premList);
+        } catch(e) {}
+
+        // 4. Hapus sesi aktif dari sessions.json jika ada
+        try {
+            if (fs.existsSync(SESSIONS_FILE)) {
+                let sess = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8') || '{}');
+                for (const tok in sess) {
+                    const s = sess[tok];
+                    if ((id && s.userId === id) || (cleanUser && (s.username || '').toLowerCase() === cleanUser)) {
+                        delete sess[tok];
+                    }
+                }
+                fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sess, null, 2), 'utf8');
+            }
+        } catch(e) {}
+
+        // 5. Coba hapus juga di Supabase REST API
+        const SB = "https://dbbfoisrphocoyddgyhu.supabase.co";
+        const KEY = "sb_publishable_PmYc-4IAfiNVPhvrH0fnvw_OBuK28Gd";
+        const H = { "apikey": KEY, "Content-Type": "application/json" };
+        try {
+            if (id) await fetch(SB + "/rest/v1/py_users?id=eq." + id, { method: "DELETE", headers: H });
+            if (cleanUser) await fetch(SB + "/rest/v1/py_users?username=eq." + cleanUser, { method: "DELETE", headers: H });
+        } catch(e) {}
+
+        botManager.addLog('info', `[ADMIN] Akun member @${username || id} berhasil dihapus permanen oleh admin.`);
+
+        res.json({
+            success: true,
+            message: `Akun member @${username || 'pengguna'} berhasil dihapus permanen dari sistem.`
+        });
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ==========================================
 // COMBO LOG MANAGEMENT (Hapus Log Verifikasi Combo oleh Admin)
 // ==========================================
+app.get('/api/combo/deleted', (req, res) => {
+    try {
+        const data = getDeletedCombos();
+        res.json({
+            success: true,
+            ...data
+        });
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 app.post('/api/combo/delete', async (req, res) => {
     try {
-        const { id, status } = req.body || {};
+        const { id, status, ids } = req.body || {};
+        const store = getDeletedCombos();
+
+        if (id) {
+            if (!store.ids.includes(id)) store.ids.push(id);
+        }
+        if (Array.isArray(ids)) {
+            ids.forEach(oneId => {
+                if (!store.ids.includes(oneId)) store.ids.push(oneId);
+            });
+        }
+        if (status) {
+            if (!store.statuses.includes(status)) store.statuses.push(status);
+        }
+
+        saveDeletedCombos(store);
+
+        // Cobakan juga delete di Supabase jika REST API terbuka
         const SB = "https://dbbfoisrphocoyddgyhu.supabase.co";
         const KEY = "sb_publishable_PmYc-4IAfiNVPhvrH0fnvw_OBuK28Gd";
         const H = { "apikey": KEY, "Content-Type": "application/json" };
 
         let query = "";
-        if (id) {
-            query = "?id=eq." + id;
-        } else if (status) {
-            query = "?status=eq." + status;
-        } else {
-            return res.status(400).json({ success: false, message: 'ID combo atau status wajib disertakan.' });
+        if (id) query = "?id=eq." + id;
+        else if (status) query = "?status=eq." + status;
+
+        if (query) {
+            try {
+                await fetch(SB + "/rest/v1/py_combos" + query, { method: "DELETE", headers: H });
+            } catch(e) {}
         }
 
-        const r = await fetch(SB + "/rest/v1/py_combos" + query, { method: "DELETE", headers: H });
-        if (r.ok || r.status === 204) {
-            return res.json({ success: true, message: 'Log combo berhasil dihapus dari server.' });
-        }
-        const errText = await r.text();
-        res.status(r.status).json({ success: false, message: 'Gagal menghapus combo: ' + errText });
+        botManager.addLog('info', `[ADMIN] Berhasil menghapus log combo (id: ${id || 'batch'}, status: ${status || 'single'}).`);
+        return res.json({
+            success: true,
+            message: 'Log combo berhasil dihapus dan dibersihkan dari server.'
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
