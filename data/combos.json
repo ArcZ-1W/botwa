@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "id": 1,
+    "title": "One Shot Kitsune Sanguine",
+    "build": "Kitsune, Sanguine Art, CDK, Soul Guitar",
+    "sequence": "Kitsune C -> Sanguine C -> Kitsune F -> Sanguine Z -> Sanguine X -> CDK Z -> Tap -> CDK X -> Soul Guitar X",
+    "description": "Pastikan Ken lawan pecah di awal dengan Kitsune C untuk garansi kill instan.",
+    "rawText": "Judul: One Shot Kitsune Sanguine\nBuild: Sanguine, Kitsune, CDK, Soul Guitar\nUrutan: Kitsune C -> Sanguine C -> Kitsune F -> Sanguine Z -> Sanguine X -> CDK Z -> Tap -> CDK X -> Soul Guitar X",
+    "sender": "Admin",
+    "senderNumber": "System",
+    "createdAt": "11/11/2026, 09.36.54"
+  },
+  {
+    "id": 2,
+    "title": "Godhuman Portal CDK Combo",
+    "build": "Portal, Godhuman, CDK, Soul Guitar",
+    "sequence": "Portal V -> Soul Guitar Z -> Portal X -> Godhuman Z -> Godhuman C -> CDK Z -> CDK X -> Godhuman X",
+    "description": "Combo dimensional rift super lincah dengan lock stun bertubi-tubi.",
+    "rawText": "Judul: Godhuman Portal CDK Combo\nBuild: Portal, Godhuman, CDK, Soul Guitar\nUrutan: Portal V -> Soul Guitar Z -> Portal X -> Godhuman Z -> Godhuman C -> CDK Z -> CDK X -> Godhuman X",
+    "sender": "Admin",
+    "senderNumber": "System",
+    "createdAt": "11/11/2026, 09.36.54"
+  },
+  {
+    "id": 3,
+    "title": "Dough Sanguine Art One Combo",
+    "build": "Dough (Awakened), Sanguine Art, CDK, Kabucha",
+    "sequence": "Dough X -> Dough V -> Sanguine C -> Sanguine Z -> Dough C -> CDK Z -> Sanguine X",
+    "description": "Kombo adonan mematikan dengan penutup Sanguine Art lifesteal.",
+    "rawText": "Judul: Dough Sanguine Art One Combo\nBuild: Dough, Sanguine Art, CDK, Kabucha\nUrutan: Dough X -> Dough V -> Sanguine C -> Sanguine Z -> Dough C -> CDK Z -> Sanguine X",
+    "sender": "Admin",
+    "senderNumber": "System",
+    "createdAt": "11/11/2026, 09.36.54"
+  }
+]

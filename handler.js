@@ -22,6 +22,7 @@ const {
 const groupScheduler = require('./lib/groupScheduler');
 const onlyManager = require('./lib/onlyManager');
 const ChatManager = require('./lib/chatManager');
+const comboManager = require('./lib/comboManager');
 const { info, warn, error } = require('./lib/color');
 
 /**
@@ -67,20 +68,10 @@ module.exports = async function messageHandler(sock, m) {
 
         body = (body || '').trim();
 
-        // Cek prefix atau perintah langsung
-        const isCmd = body.startsWith(config.prefix);
-        const command = isCmd ? body.slice(config.prefix.length).trim().split(/ +/)[0].toLowerCase() : '';
-        const args = isCmd ? body.slice(config.prefix.length).trim().split(/ +/).slice(1) : [];
-        const text = args.join(' ');
-
-        if (!isCmd || !command) return;
-
         const isGroup = from.endsWith('@g.us');
         const sender = isGroup ? (m.key.participant || from) : from;
         const senderName = m.pushName || 'Tanpa Nama';
         const senderNumber = sender.replace(/[^0-9]/g, '');
-        const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const chatType = isGroup ? 'GRUP' : 'PRIBADI';
 
         // Identifikasi apakah pengirim adalah bot sendiri / pemilik
         const isFromMe = !!m.key.fromMe;
@@ -99,6 +90,90 @@ module.exports = async function messageHandler(sock, m) {
             // Chat ini tidak terdaftar di daftar .only, abaikan
             return;
         }
+
+        // ==================== INTERACTIVE SESSION: COMBO SEND ====================
+        if (!isFromMe && comboManager.hasPendingSession(from, sender)) {
+            const session = comboManager.getPendingSession(from, sender);
+
+            // Batalkan sesi jika user mengetik .batal atau batal
+            if (body.toLowerCase() === '.batal' || body.toLowerCase() === 'batal' || body.toLowerCase() === '.cancel') {
+                comboManager.removePendingSession(from, sender);
+                await sock.sendMessage(from, { react: { text: '❌', key: session.promptMsgKey } });
+                await sock.sendMessage(from, {
+                    text: `❌ *PROSES PENGIRIMAN COMBO DIBATALKAN*\n\nAnda dapat memulai kembali kapan saja dengan mengetik *${config.prefix}combo send*.`,
+                    edit: session.promptMsgKey
+                });
+                return;
+            }
+
+            // Validasi apakah ada teks combo yang dikirim
+            if (session && body) {
+                try {
+                    // 1. Berikan reaksi loading ⏳ pada pesan bot sebelumnya
+                    await sock.sendMessage(from, { react: { text: '⏳', key: session.promptMsgKey } });
+
+                    // 2. Edit teks pesan bot menjadi: "Menyimpan di database server..."
+                    await sock.sendMessage(from, {
+                        text: `⏳ *Menyimpan di database server...*\nMohon tunggu beberapa saat.`,
+                        edit: session.promptMsgKey
+                    });
+
+                    // Jeda visual 1.2 detik agar transisi terlihat jelas
+                    await new Promise(r => setTimeout(r, 1200));
+
+                    // 3. Simpan combo ke database server (data/combos.json)
+                    const savedCombo = comboManager.saveNewCombo({
+                        rawText: body,
+                        sender: senderName,
+                        senderNumber: senderNumber
+                    });
+
+                    // 4. Ubah reaksi pesan bot menjadi centang ✅
+                    await sock.sendMessage(from, { react: { text: '✅', key: session.promptMsgKey } });
+
+                    // 5. Edit teks pesan bot menjadi: "File tersimpan sukses"
+                    await sock.sendMessage(from, {
+                        text: `✅ *FILE TERSIMPAN SUKSES!*\n` +
+                              `─────────────────────────\n` +
+                              `🆔 *ID Combo:* #${savedCombo.id}\n` +
+                              `📌 *Judul:* ${savedCombo.title}\n` +
+                              `🛡️ *Build:* ${savedCombo.build}\n` +
+                              `⚡ *Urutan Combo:*\n\`\`\`${savedCombo.sequence}\`\`\`\n` +
+                              (savedCombo.description ? `📝 *Catatan:* ${savedCombo.description}\n` : '') +
+                              `👤 *Kreator:* @${senderNumber}\n` +
+                              `📅 *Waktu:* ${savedCombo.createdAt}\n` +
+                              `─────────────────────────\n` +
+                              `💡 *Kini combo ini sudah tersimpan dan dapat dicari dengan mengetik:*\n` +
+                              `👉 *${config.prefix}combo get ${savedCombo.build.split(',')[0].trim().toLowerCase()}*`,
+                        edit: session.promptMsgKey,
+                        mentions: [sender]
+                    });
+
+                    // Hapus sesi setelah berhasil disimpan
+                    comboManager.removePendingSession(from, sender);
+                    return;
+                } catch (err) {
+                    comboManager.removePendingSession(from, sender);
+                    await sock.sendMessage(from, { react: { text: '❌', key: session.promptMsgKey } });
+                    await sock.sendMessage(from, {
+                        text: `❌ Gagal menyimpan combo ke database server: ${err.message}`,
+                        edit: session.promptMsgKey
+                    });
+                    return;
+                }
+            }
+        }
+
+        // Cek prefix atau perintah langsung
+        const isCmd = body.startsWith(config.prefix);
+        const command = isCmd ? body.slice(config.prefix.length).trim().split(/ +/)[0].toLowerCase() : '';
+        const args = isCmd ? body.slice(config.prefix.length).trim().split(/ +/).slice(1) : [];
+        const text = args.join(' ');
+
+        if (!isCmd || !command) return;
+
+        const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const chatType = isGroup ? 'GRUP' : 'PRIBADI';
 
         // Print command yang masuk ke terminal
         console.log(
@@ -151,6 +226,10 @@ module.exports = async function messageHandler(sock, m) {
 ┃ 🔸 *${config.prefix}emoji* <emojis> : Gabung s/d 20 emoji jadi stiker
 ┃ 🔸 *${config.prefix}emojimix* <e1> <e2> : Mix 2 emoji (Emoji Kitchen)
 ┃ 🔸 *${config.prefix}tts* [suara] <teks> : Text-to-speech audio VN
+┃
+┃ ⚔️ *BLOX FRUITS & COMBO PVP*
+┃ 🔸 *${config.prefix}combo get* <kata kunci> : Cari combo senjata/buah (kitsune, cdk, dll)
+┃ 🔸 *${config.prefix}combo send* : Kirim & simpan combo baru ke server
 ┃
 ┃ 📥 *DOWNLOADER*
 ┃ 🔸 *${config.prefix}spotify* <url> : Unduh lagu Spotify (MP3)
@@ -367,6 +446,69 @@ module.exports = async function messageHandler(sock, m) {
                     error(`Gagal mengirim ke Chat Place: ${err.message}`);
                     await sock.sendMessage(from, { react: { text: '❌', key: m.key } });
                     await reply(`❌ Gagal mengirim ke Chat Place: ${err.message}`);
+                }
+                break;
+            }
+
+            // ==================== COMBO BLOX FRUITS PVP ====================
+            case 'combo':
+            case 'combopvp': {
+                const subCmd = (args[0] || '').toLowerCase();
+                const query = args.slice(1).join(' ').trim();
+
+                if (subCmd === 'get' || subCmd === 'cari' || subCmd === 'search' || subCmd === 'list') {
+                    await sock.sendMessage(from, { react: { text: '⚔️', key: m.key } });
+                    const results = comboManager.searchCombos(query);
+                    const formatted = comboManager.formatComboList(results, query);
+                    
+                    const mentions = [];
+                    results.slice(0, 10).forEach(r => {
+                        if (r.senderNumber && r.senderNumber !== 'System') {
+                            mentions.push(`${r.senderNumber}@s.whatsapp.net`);
+                        }
+                    });
+
+                    await sock.sendMessage(from, { text: formatted, mentions }, { quoted: m });
+                    await sock.sendMessage(from, { react: { text: '✅', key: m.key } });
+                } else if (subCmd === 'send' || subCmd === 'tambah' || subCmd === 'add' || subCmd === 'set') {
+                    await sock.sendMessage(from, { react: { text: '📝', key: m.key } });
+
+                    const promptText = `📝 *FORMULIR INPUT COMBO PVP BARU*\n` +
+                                       `─────────────────────────\n` +
+                                       `Halo @${senderNumber}! Silakan kirimkan teks combo yang ingin Anda simpan ke database server.\n\n` +
+                                       `📋 *Contoh Template Format:* \n` +
+                                       `\`\`\`\n` +
+                                       `Judul: One Shot Kitsune Sanguine\n` +
+                                       `Build: Sanguine, Kitsune, CDK, Soul Guitar\n` +
+                                       `Urutan: Kitsune C -> Sanguine C -> Kitsune F -> Sanguine Z -> Sanguine X -> CDK Z -> Tap -> CDK X -> Soul Guitar X\n` +
+                                       `Deskripsi: Pastikan ken lawan mati sebelum mulai combo\n` +
+                                       `\`\`\`\n\n` +
+                                       `*(Anda juga bisa mengetik urutan combonya saja secara bebas)*\n\n` +
+                                       `👉 *Ketik teks combo Anda sekarang dan kirimkan langsung di chat ini.* (Ketik *${config.prefix}batal* untuk membatalkan)`;
+
+                    const promptMsg = await sock.sendMessage(from, {
+                        text: promptText,
+                        mentions: [sender]
+                    }, { quoted: m });
+
+                    comboManager.setPendingSession(from, sender, promptMsg.key);
+                } else {
+                    await reply(
+                        `⚔️ *SISTEM DATABASE COMBO BLOX FRUITS PVP*\n` +
+                        `─────────────────────────\n` +
+                        `💡 *Perintah yang Tersedia:*\n\n` +
+                        `1. *${config.prefix}combo get <kata kunci>*\n` +
+                        `   Mencari combo berdasarkan senjata / buah / fighting style.\n` +
+                        `   Contoh: *${config.prefix}combo get kitsune*\n` +
+                        `   Contoh: *${config.prefix}combo get cdk*\n` +
+                        `   Contoh: *${config.prefix}combo get sanguine soulguitar*\n` +
+                        `   *(Ketik ${config.prefix}combo get untuk melihat semua combo)*\n\n` +
+                        `2. *${config.prefix}combo send*\n` +
+                        `   Mendaftarkan combo PvP baru buatan Anda ke database server.\n` +
+                        `   Bot akan memberikan template dan menyimpan langsung ke server!\n\n` +
+                        `─────────────────────────\n` +
+                        `*${config.botName}*`
+                    );
                 }
                 break;
             }
