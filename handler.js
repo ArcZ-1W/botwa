@@ -377,7 +377,7 @@ module.exports = async function messageHandler(sock, m) {
                             await sock.sendMessage(from, { sticker: stickerBuffer }, { quoted: m });
                         }
                     } catch (e) {}
-                    await reply(`🌐 *ENDLESS ACADEMY*\n\n🔗 Kunjungi: https://academy.xnonymus.web.id\n\n❌ Info error: ${err.message}`);
+                    await reply(`🌐 *ENDLESS ACADEMY*\n\n🔗 Kunjungi: https://academy-endless.vercel.app/\n\n❌ Info error: ${err.message}`);
                 }
                 break;
             }
